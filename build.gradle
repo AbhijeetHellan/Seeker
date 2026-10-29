@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'application'
     id 'checkstyle'
 }
 
@@ -22,7 +23,6 @@ sourceSets {
             srcDirs = ['src']
         }
     }
-
     test {
         java {
             srcDirs = ['test']
@@ -30,19 +30,13 @@ sourceSets {
     }
 }
 
-dependencies {
-    testImplementation platform('org.junit:junit-bom:5.11.4')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-}
-
-test {
-    useJUnitPlatform()
+application {
+    mainClass = 'ai.App'
 }
 
 checkstyle {
     toolVersion = '10.12.4'
     configFile = file('config/checkstyle/checkstyle.xml')
-
     ignoreFailures = false
     maxErrors = 0
     maxWarnings = 0
@@ -52,5 +46,19 @@ tasks.withType(Checkstyle).configureEach {
     reports {
         xml.required = true
         html.required = true
+    }
+}
+
+tasks.register('selfTest', JavaExec) {
+    group = 'verification'
+    description = 'Runs the dependency-free Seeker self tests.'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'ai.SelfTest'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'ai.App'
     }
 }

@@ -2,6 +2,9 @@
 .gradle/
 build/
 
+# Generated game results
+results/*.csv
+
 # Java compiled files
 *.class
 *.jar
