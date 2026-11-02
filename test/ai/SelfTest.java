@@ -8,6 +8,7 @@ import ai.engine.DecisionResult;
 import ai.engine.Minimax;
 import ai.engine.PathResult;
 import ai.models.ActionType;
+import ai.models.Difficulty;
 import ai.models.Board;
 import ai.models.GameAction;
 import ai.models.GameRules;
@@ -24,7 +25,10 @@ public final class SelfTest {
         testAStarManhattan();
         testRandomArenaReachable();
         testRandomDamageRanges();
-        testPowerStrikeAfterSixAttacks();
+        testPowerStrikeAfterFiveAttacks();
+        testDifficultyAndLock();
+        testDifficultyDamageRanges();
+        testComparisonData();
         testWasdMovement();
         testHideBehindCover();
         testApiReset();
@@ -72,21 +76,21 @@ public final class SelfTest {
         }
     }
 
-    private static void testPowerStrikeAfterSixAttacks() {
+    private static void testPowerStrikeAfterFiveAttacks() {
         Board board = Board.empty(4, 4);
         UnitState human = unit("H", Side.HUMAN, new Position(1, 1));
         UnitState ai = unit("A", Side.AI, new Position(1, 2));
         GameState current = state(board, human, ai, Side.HUMAN, 0);
 
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 5; i++) {
             current = GameRules.applyForSearch(current, GameAction.attack()).state();
-            if (i < 5) {
+            if (i < 4) {
                 require(!current.powerStrikeReady(), "Power Strike should not be ready early.");
             }
             current = current.withTurn(Side.HUMAN);
         }
 
-        require(current.powerStrikeReady(), "Power Strike should unlock after six attacks.");
+        require(current.powerStrikeReady(), "Power Strike should unlock after five attacks.");
         require(GameRules.isLegal(current, ActionType.POWER_STRIKE),
                 "Power Strike should be legal when charged and adjacent.");
 
@@ -95,6 +99,62 @@ public final class SelfTest {
         require(healthBefore - after.ai().health() == 15,
                 "Power Strike should deal a guaranteed 15 damage.");
         require(after.humanAttackCharge() == 0, "Power Strike should reset the charge.");
+    }
+
+    private static void testDifficultyAndLock() {
+        GameApi api = new DefaultGameApi(101L);
+        api.setDifficulty(Difficulty.EASY);
+        require(api.state().difficulty() == Difficulty.EASY, "Difficulty must be selectable before play.");
+        require(api.state().turnNumber() == 1, "Selecting difficulty must not consume a turn.");
+
+        api.performHumanAction(ActionType.HOLD);
+        require(api.state().turnNumber() > 1, "Human action should start the match.");
+        boolean rejected = false;
+        try {
+            api.setDifficulty(Difficulty.HARD);
+        } catch (IllegalStateException expected) {
+            rejected = true;
+        }
+        require(rejected, "Difficulty must be locked once a match has started.");
+        require(api.state().difficulty() == Difficulty.EASY, "Rejected change must preserve difficulty.");
+        require(api.runAiTurn().alphaBeta().depth() == Difficulty.EASY.searchDepth(),
+                "AI search must use the locked difficulty depth.");
+
+        api.resetArena();
+        require(api.state().turnNumber() == 1, "Reset must return to pre-game state.");
+        require(api.state().difficulty() == Difficulty.EASY, "Reset should retain chosen difficulty.");
+        api.setDifficulty(Difficulty.HARD);
+        require(api.state().difficulty() == Difficulty.HARD, "Difficulty should unlock after Reset.");
+        api.newArena(202L);
+        require(api.state().difficulty() == Difficulty.HARD, "New arena should retain selected difficulty.");
+        api.setDifficulty(Difficulty.MEDIUM);
+        require(api.state().difficulty() == Difficulty.MEDIUM, "Difficulty should unlock on new arena.");
+    }
+
+    private static void testDifficultyDamageRanges() {
+        Board board = Board.empty(4, 4);
+        UnitState human = unit("H", Side.HUMAN, new Position(1, 1));
+        UnitState ai = unit("A", Side.AI, new Position(1, 2));
+        for (Difficulty difficulty : Difficulty.values()) {
+            for (int i = 0; i < 100; i++) {
+                GameState starting = new GameState(board, human, ai, Side.AI, 1, 12L, 0, difficulty);
+                GameState after = GameRules.apply(starting, GameAction.attack()).state();
+                int damage = 100 - after.human().health();
+                require(damage >= difficulty.minAiDamage() && damage <= difficulty.maxAiDamage(),
+                        "AI damage must follow the chosen difficulty.");
+            }
+        }
+    }
+
+    private static void testComparisonData() {
+        GameState starting = GameState.newRandomArena(9988L, Difficulty.EASY).withTurn(Side.AI);
+        DecisionResult mm = new Minimax().chooseAction(starting, Difficulty.EASY.searchDepth());
+        DecisionResult ab = new AlphaBeta().chooseAction(starting, Difficulty.EASY.searchDepth());
+        ai.experiment.ComparisonSample sample = new ai.experiment.ComparisonSample(1, 2, Difficulty.EASY, mm, ab);
+        require(sample.difficulty() == Difficulty.EASY, "CSV comparison needs match difficulty.");
+        require(sample.minimax().nodesVisited() >= sample.alphaBeta().nodesVisited(),
+                "Two-line comparison should show Alpha-Beta explores no more nodes.");
+        require(sample.alphaBetaEfficiencyGainPercent() >= 0.0, "Efficiency percentage must be nonnegative.");
     }
 
     private static void testWasdMovement() {

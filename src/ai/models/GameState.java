@@ -8,13 +8,14 @@ public record GameState(
         Side turn,
         int turnNumber,
         long arenaSeed,
-        int humanAttackCharge
+        int humanAttackCharge,
+        Difficulty difficulty
 ) {
     public static final int MAX_TURNS = 200;
-    public static final int POWER_STRIKE_REQUIRED_ATTACKS = 6;
+    public static final int POWER_STRIKE_REQUIRED_ATTACKS = 5;
 
     public GameState {
-        if (board == null || human == null || ai == null || turn == null) {
+        if (board == null || human == null || ai == null || turn == null || difficulty == null) {
             throw new IllegalArgumentException("GameState fields cannot be null.");
         }
         if (human.side() != Side.HUMAN || ai.side() != Side.AI) {
@@ -23,7 +24,17 @@ public record GameState(
         humanAttackCharge = Math.max(0, Math.min(humanAttackCharge, POWER_STRIKE_REQUIRED_ATTACKS));
     }
 
+    /** Existing callers can omit difficulty and get Medium. */
+    public GameState(Board board, UnitState human, UnitState ai, Side turn,
+                     int turnNumber, long arenaSeed, int humanAttackCharge) {
+        this(board, human, ai, turn, turnNumber, arenaSeed, humanAttackCharge, Difficulty.MEDIUM);
+    }
+
     public static GameState newRandomArena(long seed) {
+        return newRandomArena(seed, Difficulty.MEDIUM);
+    }
+
+    public static GameState newRandomArena(long seed, Difficulty difficulty) {
         int rows = 12;
         int cols = 12;
         Position humanStart = new Position(rows - 2, 1);
@@ -32,7 +43,7 @@ public record GameState(
 
         UnitState human = new UnitState("Human Ranger", Side.HUMAN, humanStart, 100, 100, false, false);
         UnitState ai = new UnitState("AI Sentinel", Side.AI, aiStart, 100, 100, false, false);
-        return new GameState(board, human, ai, Side.HUMAN, 1, seed, 0);
+        return new GameState(board, human, ai, Side.HUMAN, 1, seed, 0, difficulty);
     }
 
     public UnitState unit(Side side) {
@@ -68,6 +79,6 @@ public record GameState(
     }
 
     public GameState withTurn(Side nextTurn) {
-        return new GameState(board, human, ai, nextTurn, turnNumber, arenaSeed, humanAttackCharge);
+        return new GameState(board, human, ai, nextTurn, turnNumber, arenaSeed, humanAttackCharge, difficulty);
     }
 }

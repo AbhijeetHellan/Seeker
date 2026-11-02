@@ -12,12 +12,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class GameRules {
     public static final int HUMAN_MIN_DAMAGE = 5;
     public static final int HUMAN_MAX_DAMAGE = 15;
-    public static final int AI_MIN_DAMAGE = 8;
-    public static final int AI_MAX_DAMAGE = 20;
     public static final int POWER_STRIKE_DAMAGE = 15;
 
     private static final int HUMAN_SEARCH_DAMAGE = 10;
-    private static final int AI_SEARCH_DAMAGE = 14;
 
     private GameRules() {
     }
@@ -106,7 +103,8 @@ public final class GameRules {
                 Side.AI,
                 state.turnNumber() + 1,
                 state.arenaSeed(),
-                state.humanAttackCharge()
+                state.humanAttackCharge(),
+                state.difficulty()
         );
 
         String message = "Human Ranger moved to tile " + destination.row() + "," + destination.col() + ".";
@@ -144,7 +142,7 @@ public final class GameRules {
 
         switch (action.type()) {
             case ATTACK -> {
-                int rawDamage = attackDamage(actorSide, searchMode);
+                int rawDamage = attackDamage(actorSide, state.difficulty(), searchMode);
                 int damage = reducedDamage(rawDamage, target);
                 actor = actor.reveal();
                 target = target.receiveDamage(damage);
@@ -207,20 +205,21 @@ public final class GameRules {
                 state.turn().opposite(),
                 state.turnNumber() + 1,
                 state.arenaSeed(),
-                humanCharge
+                humanCharge,
+                state.difficulty()
         );
 
         return new ActionOutcome(next, pathResult, description);
     }
 
-    private static int attackDamage(Side attacker, boolean searchMode) {
-        if (searchMode) {
-            return attacker == Side.HUMAN ? HUMAN_SEARCH_DAMAGE : AI_SEARCH_DAMAGE;
-        }
+    private static int attackDamage(Side attacker, Difficulty difficulty, boolean searchMode) {
+        // Search uses predictable damage so Minimax and Alpha-Beta compare the same moves.
         if (attacker == Side.HUMAN) {
-            return ThreadLocalRandom.current().nextInt(HUMAN_MIN_DAMAGE, HUMAN_MAX_DAMAGE + 1);
+            return searchMode ? HUMAN_SEARCH_DAMAGE
+                    : ThreadLocalRandom.current().nextInt(HUMAN_MIN_DAMAGE, HUMAN_MAX_DAMAGE + 1);
         }
-        return ThreadLocalRandom.current().nextInt(AI_MIN_DAMAGE, AI_MAX_DAMAGE + 1);
+        return searchMode ? difficulty.expectedAiDamage()
+                : ThreadLocalRandom.current().nextInt(difficulty.minAiDamage(), difficulty.maxAiDamage() + 1);
     }
 
     private static int reducedDamage(int rawDamage, UnitState target) {

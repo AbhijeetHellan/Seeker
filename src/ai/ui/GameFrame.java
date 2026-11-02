@@ -11,6 +11,7 @@ import ai.models.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicScrollBarUI;
+import javax.swing.plaf.basic.BasicComboBoxUI;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
@@ -41,9 +42,11 @@ public final class GameFrame extends JFrame {
     private final JLabel minimaxStats = label("Minimax: —", 12, Font.PLAIN, TEXT);
     private final JLabel alphaStats = label("Alpha-Beta: —", 12, Font.PLAIN, TEXT);
     private final JLabel sameMoveLabel = label("Live comparison starts on the AI turn", 11, Font.BOLD, MUTED);
-    private final JLabel depthLabel = label("Depth 5", 12, Font.BOLD, TEXT);
+    private final JLabel depthLabel = label("Search depth: 3", 11, Font.BOLD, TEXT);
+    private final JComboBox<Difficulty> difficultyChoice = new JComboBox<>(Difficulty.values());
+    private final JLabel difficultyHint = label("Choose before your first turn", 11, Font.PLAIN, MUTED);
     private final JLabel tacticalHint = label(
-            "Human damage 5–15 • AI damage 8–20 • every 6 human attacks unlocks a 15-damage Power Strike",
+            "Human 5–15 damage • AI damage depends on difficulty • 5 attacks unlock a 15-damage Power Strike",
             11,
             Font.PLAIN,
             new Color(109, 205, 158)
@@ -58,7 +61,7 @@ public final class GameFrame extends JFrame {
 
     // Tactical actions.
     private final DarkButton attackButton = button("F  Attack", DarkButton.Style.DANGER);
-    private final DarkButton powerStrikeButton = button("G  Power Strike (0/6)", DarkButton.Style.PRIMARY);
+    private final DarkButton powerStrikeButton = button("G  Power Strike (0/5)", DarkButton.Style.PRIMARY);
     private final DarkButton defendButton = button("E  Defend", DarkButton.Style.NORMAL);
     private final DarkButton hideButton = button("H  Hide", DarkButton.Style.STEALTH);
     private final DarkButton approachButton = button("R  A* Move", DarkButton.Style.PRIMARY);
@@ -67,10 +70,6 @@ public final class GameFrame extends JFrame {
 
     private final DarkButton newArenaButton = button("New Random Arena", DarkButton.Style.PRIMARY);
     private final DarkButton resetButton = button("Reset Match", DarkButton.Style.NORMAL);
-    private final DarkButton depthMinusButton = button("−", DarkButton.Style.NORMAL);
-    private final DarkButton depthPlusButton = button("+", DarkButton.Style.NORMAL);
-
-    private int depth = 5;
     private int aiTurnCounter = 0;
     private boolean aiThinking = false;
 
@@ -94,8 +93,9 @@ public final class GameFrame extends JFrame {
         CsvRecorder.reset();
         refreshUi();
         appendLog("New arena generated automatically. Use W/A/S/D to move one tile per turn.");
-        appendLog("Human attacks roll 5–15 damage; AI attacks roll 8–20 damage.");
-        appendLog("After 6 human attacks, press G for a guaranteed 15-damage Power Strike.");
+        appendLog("Human attacks roll 5–15 damage; AI damage and search depth depend on the selected difficulty.");
+        appendLog("Select Easy, Medium, or Hard before your first move; difficulty locks once a match begins.");
+        appendLog("After 5 human attacks, press G for a guaranteed 15-damage Power Strike.");
     }
 
     private JPanel buildHeader() {
@@ -175,7 +175,7 @@ public final class GameFrame extends JFrame {
         tactics.add(approachButton);
         tactics.add(retreatButton);
         tactics.add(holdButton);
-        JLabel turnHelp = label("6 attacks unlock Power Strike", 11, Font.PLAIN, MUTED);
+        JLabel turnHelp = label("5 attacks unlock Power Strike", 11, Font.PLAIN, MUTED);
         turnHelp.setHorizontalAlignment(SwingConstants.CENTER);
         tactics.add(turnHelp);
 
@@ -213,25 +213,49 @@ public final class GameFrame extends JFrame {
         right.add(Box.createVerticalStrut(10));
 
         JPanel settings = cardPanel(new BorderLayout(10, 8));
-        settings.add(label("SEARCH SETTINGS", 11, Font.BOLD, MUTED), BorderLayout.WEST);
+        settings.add(label("DIFFICULTY SETTINGS", 11, Font.BOLD, MUTED), BorderLayout.WEST);
 
-        JPanel searchControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        searchControls.setOpaque(false);
-        searchControls.add(label("A*: Manhattan", 11, Font.BOLD, new Color(109, 205, 158)));
+        JPanel difficultyControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        difficultyControls.setOpaque(false);
+        difficultyChoice.setSelectedItem(state.difficulty());
+        difficultyChoice.setPreferredSize(new Dimension(106, 30));
+        difficultyChoice.setBackground(PANEL_2);
+        difficultyChoice.setForeground(TEXT);
+        difficultyChoice.setFocusable(false);
+        difficultyChoice.setFont(difficultyChoice.getFont().deriveFont(Font.BOLD, 12f));
+        difficultyChoice.setBorder(BorderFactory.createLineBorder(new Color(69, 82, 103)));
+        difficultyChoice.setUI(new BasicComboBoxUI() {
+            @Override
+            protected JButton createArrowButton() {
+                DarkButton arrow = new DarkButton("▾", DarkButton.Style.NORMAL);
+                arrow.setBorder(new EmptyBorder(2, 5, 2, 5));
+                return arrow;
+            }
+        });
+        difficultyChoice.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                                                          int index, boolean selected, boolean focused) {
+                JLabel item = (JLabel) super.getListCellRendererComponent(
+                        list, value, index, selected, focused);
+                item.setOpaque(true);
+                item.setBackground(selected ? new Color(45, 91, 143) : PANEL_2);
+                item.setForeground(difficultyChoice.isEnabled() ? TEXT : MUTED);
+                item.setBorder(new EmptyBorder(5, 8, 5, 8));
+                return item;
+            }
+        });
+        difficultyControls.add(difficultyChoice);
+        difficultyControls.add(depthLabel);
+        settings.add(difficultyControls, BorderLayout.EAST);
 
-        depthMinusButton.setPreferredSize(new Dimension(38, 30));
-        depthPlusButton.setPreferredSize(new Dimension(38, 30));
-        depthLabel.setPreferredSize(new Dimension(66, 30));
-        depthLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        searchControls.add(depthMinusButton);
-        searchControls.add(depthLabel);
-        searchControls.add(depthPlusButton);
-        settings.add(searchControls, BorderLayout.EAST);
-
-        JLabel settingsInfo = label("Alpha-Beta controls the AI; Minimax evaluates the same state for a fair live comparison.",
-                11, Font.PLAIN, MUTED);
-        settings.add(settingsInfo, BorderLayout.SOUTH);
-        settings.setMaximumSize(new Dimension(Integer.MAX_VALUE, 96));
+        JPanel difficultyInfo = new JPanel(new GridLayout(2, 1, 0, 4));
+        difficultyInfo.setOpaque(false);
+        difficultyInfo.add(difficultyHint);
+        difficultyInfo.add(label("A*: Manhattan • Minimax and Alpha-Beta use identical search depth.",
+                11, Font.PLAIN, MUTED));
+        settings.add(difficultyInfo, BorderLayout.SOUTH);
+        settings.setMaximumSize(new Dimension(Integer.MAX_VALUE, 108));
         right.add(settings);
         right.add(Box.createVerticalStrut(10));
 
@@ -259,7 +283,7 @@ public final class GameFrame extends JFrame {
                 "3. Hold position to stay hidden.\n" +
                 "4. Moving, attacking, retreating, or defending reveals you.\n" +
                 "Use E to defend when you expect a direct attack.\n" +
-                "Normal human attacks charge Power Strike; the special move is ready after 6 attacks."
+                "Normal human attacks charge Power Strike; the special move is ready after 5 attacks."
         );
         styleReadOnlyText(stealthText);
         stealthCard.add(stealthText, BorderLayout.CENTER);
@@ -300,8 +324,23 @@ public final class GameFrame extends JFrame {
         retreatButton.addActionListener(e -> performHumanAction(ActionType.RETREAT));
         holdButton.addActionListener(e -> performHumanAction(ActionType.HOLD));
 
-        depthMinusButton.addActionListener(e -> setDepth(depth - 1));
-        depthPlusButton.addActionListener(e -> setDepth(depth + 1));
+        difficultyChoice.addActionListener(e -> {
+            Difficulty selected = (Difficulty) difficultyChoice.getSelectedItem();
+            if (selected != null && selected != state.difficulty() && !aiThinking) {
+                try {
+                    game.setDifficulty(selected);
+                    state = game.state();
+                    resetUiForArena();
+                    appendLog(selected + " difficulty selected before the match. "
+                            + "AI damage: " + selected.minAiDamage() + "–" + selected.maxAiDamage()
+                            + "; search depth: " + selected.searchDepth() + ".");
+                } catch (IllegalStateException ex) {
+                    // Restore the saved selection if this match has already started.
+                    difficultyChoice.setSelectedItem(state.difficulty());
+                    appendLog("Difficulty is locked during a match. Reset or start a new arena to change it.");
+                }
+            }
+        });
         resetButton.addActionListener(e -> resetSameArena());
         newArenaButton.addActionListener(e -> newArena());
     }
@@ -376,15 +415,14 @@ public final class GameFrame extends JFrame {
     private void runAiTurn() {
         aiThinking = true;
         setHumanControlsEnabled(false);
-        setDepthControlsEnabled(false);
-        int searchDepth = depth;
+        int searchDepth = state.difficulty().searchDepth();
         int gameTurnBeforeAi = state.turnNumber();
         appendLog("AI is evaluating the same state with Minimax and Alpha-Beta at depth " + searchDepth + "...");
 
         SwingWorker<AiTurnResult, Void> worker = new SwingWorker<>() {
             @Override
             protected AiTurnResult doInBackground() {
-                return game.runAiTurn(searchDepth);
+                return game.runAiTurn();
             }
 
             @Override
@@ -396,6 +434,7 @@ public final class GameFrame extends JFrame {
                     ComparisonSample sample = new ComparisonSample(
                             aiTurnCounter,
                             gameTurnBeforeAi,
+                            state.difficulty(),
                             comparison.minimax(),
                             comparison.alphaBeta()
                     );
@@ -420,7 +459,6 @@ public final class GameFrame extends JFrame {
                             "AI search failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 } finally {
                     aiThinking = false;
-                    setDepthControlsEnabled(!state.isTerminal());
                     refreshUi();
                 }
             }
@@ -470,7 +508,8 @@ public final class GameFrame extends JFrame {
         String turnText = state.turn() + " TURN  •  Turn " + state.turnNumber()
                 + "/" + GameState.MAX_TURNS + "  •  Round " + ((state.turnNumber() + 1) / 2);
         turnLabel.setText(state.isTerminal() ? state.winnerText() : turnText);
-        arenaLabel.setText("Arena seed " + state.arenaSeed() + "  •  20% auto obstacles  •  A* Manhattan");
+        arenaLabel.setText("Arena seed " + state.arenaSeed() + "  •  20% auto obstacles  •  "
+                + state.difficulty() + "  •  A* Manhattan");
 
         boolean humanTurn = !aiThinking && !state.isTerminal() && state.turn() == Side.HUMAN;
         setHumanControlsEnabled(humanTurn);
@@ -478,25 +517,21 @@ public final class GameFrame extends JFrame {
         powerStrikeButton.setEnabled(humanTurn && game.isLegal(ActionType.POWER_STRIKE));
         powerStrikeButton.setText(state.powerStrikeReady()
                 ? "G  Power Strike READY (15)"
-                : "G  Power Strike (" + state.humanAttackCharge() + "/6)");
+                : "G  Power Strike (" + state.humanAttackCharge() + "/5)");
         hideButton.setEnabled(humanTurn && game.isLegal(ActionType.HIDE));
         approachButton.setEnabled(humanTurn && game.isLegal(ActionType.APPROACH));
         retreatButton.setEnabled(humanTurn && game.isLegal(ActionType.RETREAT));
         defendButton.setEnabled(humanTurn && game.isLegal(ActionType.DEFEND));
         holdButton.setEnabled(humanTurn && game.isLegal(ActionType.HOLD));
-        setDepthControlsEnabled(!aiThinking && !state.isTerminal());
-    }
-
-    private void setDepth(int value) {
-        depth = Math.max(1, Math.min(6, value));
-        depthLabel.setText("Depth " + depth);
-        depthMinusButton.setEnabled(depth > 1 && !aiThinking);
-        depthPlusButton.setEnabled(depth < 6 && !aiThinking);
-    }
-
-    private void setDepthControlsEnabled(boolean enabled) {
-        depthMinusButton.setEnabled(enabled && depth > 1);
-        depthPlusButton.setEnabled(enabled && depth < 6);
+        boolean beforeFirstMove = state.turnNumber() == 1 && !aiThinking && !state.isTerminal();
+        difficultyChoice.setEnabled(beforeFirstMove);
+        if (difficultyChoice.getSelectedItem() != state.difficulty()) {
+            difficultyChoice.setSelectedItem(state.difficulty());
+        }
+        depthLabel.setText("Depth " + state.difficulty().searchDepth());
+        difficultyHint.setText(beforeFirstMove
+                ? "Choose difficulty before your first move. Locks once the game starts."
+                : "Difficulty locked for this match; reset/new arena to change it.");
     }
 
     private void resetSameArena() {

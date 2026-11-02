@@ -45,6 +45,10 @@ final class DarkButton extends JButton {
                 case STEALTH -> new Color(81, 145, 119);
                 case NORMAL -> new Color(71, 83, 103);
             };
+            if (isSelected()) {
+                fill = new Color(40, 101, 183);
+                border = new Color(107, 170, 250);
+            }
             if (getModel().isPressed()) fill = fill.darker();
             else if (getModel().isRollover()) fill = fill.brighter();
         }
