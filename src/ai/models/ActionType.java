@@ -6,6 +6,5 @@ public enum ActionType {
     APPROACH,
     RETREAT,
     DEFEND,
-    HIDE,
     HOLD
 }

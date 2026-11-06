@@ -4,6 +4,7 @@ import ai.engine.AlphaBeta;
 import ai.engine.DecisionResult;
 import ai.engine.Minimax;
 import ai.models.ActionOutcome;
+import ai.models.Difficulty;
 import ai.models.ActionType;
 import ai.models.GameAction;
 import ai.models.GameRules;
@@ -24,12 +25,20 @@ public final class DefaultGameApi implements GameApi {
 
     @Override
     public void newArena(long seed) {
-        state = GameState.newRandomArena(seed);
+        state = GameState.newRandomArena(seed, state.difficulty());
     }
 
     @Override
     public void resetArena() {
-        state = GameState.newRandomArena(state.arenaSeed());
+        state = GameState.newRandomArena(state.arenaSeed(), state.difficulty());
+    }
+
+    @Override
+    public void setDifficulty(Difficulty difficulty) {
+        if (state.turnNumber() != 1 || state.isTerminal()) {
+            throw new IllegalStateException("Difficulty can only change before the match starts.");
+        }
+        state = GameState.newRandomArena(state.arenaSeed(), difficulty);
     }
 
     @Override
@@ -52,7 +61,8 @@ public final class DefaultGameApi implements GameApi {
     }
 
     @Override
-    public AiTurnResult runAiTurn(int depth) {
+    public AiTurnResult runAiTurn() {
+        int depth = state.difficulty().searchDepth();
         GameState snapshot = state;
         DecisionResult minimax = new Minimax().chooseAction(snapshot, depth);
         DecisionResult alphaBeta = new AlphaBeta().chooseAction(snapshot, depth);
@@ -73,7 +83,6 @@ public final class DefaultGameApi implements GameApi {
             case APPROACH -> GameAction.approach();
             case RETREAT -> GameAction.retreat();
             case DEFEND -> GameAction.defend();
-            case HIDE -> GameAction.hide();
             case HOLD -> GameAction.hold();
         };
     }

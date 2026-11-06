@@ -18,7 +18,7 @@ public final class CsvRecorder {
             Files.createDirectories(OUTPUT.getParent());
             Files.writeString(
                     OUTPUT,
-                    "ai_turn,game_turn,depth,minimax_action,minimax_nodes,minimax_ms,alphabeta_action,"
+                    "ai_turn,game_turn,difficulty,depth,minimax_action,minimax_nodes,minimax_ms,alphabeta_action,"
                             + "alphabeta_nodes,alphabeta_ms,cutoffs,pruned_siblings,efficiency_gain_percent,same_action\n",
                     StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE,
@@ -43,9 +43,10 @@ public final class CsvRecorder {
 
             String line = String.format(
                     java.util.Locale.US,
-                    "%d,%d,%d,%s,%d,%.6f,%s,%d,%.6f,%d,%d,%.2f,%s%n",
+                    "%d,%d,%s,%d,%s,%d,%.6f,%s,%d,%.6f,%d,%d,%.2f,%s%n",
                     sample.aiTurn(),
                     sample.gameTurn(),
+                    sample.difficulty(),
                     sample.minimax().depth(),
                     mmAction,
                     sample.minimax().nodesVisited(),

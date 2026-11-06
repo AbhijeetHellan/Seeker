@@ -1,6 +1,8 @@
 # Gradle generated files
 .gradle/
 build/
+out/
+sources.txt
 
 # Generated game results
 results/*.csv

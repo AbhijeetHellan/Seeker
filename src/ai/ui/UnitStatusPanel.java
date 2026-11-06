@@ -47,13 +47,10 @@ final class UnitStatusPanel extends JPanel {
 
     void setUnit(UnitState unit, boolean activeTurn) {
         nameLabel.setText((side == Side.HUMAN ? "HUMAN  •  " : "AI  •  ") + unit.name());
-        String state;
-        if (unit.hidden()) state = "HIDDEN IN COVER";
-        else if (unit.defending()) state = "Defending";
-        else state = "Ready";
+        String state = unit.defending() ? "Defending" : "Ready";
         if (activeTurn) state += "  •  ACTIVE TURN";
         statusLabel.setText(state + "  •  Tile " + unit.position().row() + "," + unit.position().col());
-        statusLabel.setForeground(unit.hidden() ? new Color(106, 214, 164) : new Color(190, 198, 212));
+        statusLabel.setForeground(new Color(190, 198, 212));
         healthBar.setValue(unit.healthPercent());
         healthBar.setString(unit.health() + " / " + unit.maxHealth() + " HP");
     }

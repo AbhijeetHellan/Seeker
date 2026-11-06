@@ -12,12 +12,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class GameRules {
     public static final int HUMAN_MIN_DAMAGE = 5;
     public static final int HUMAN_MAX_DAMAGE = 15;
-    public static final int AI_MIN_DAMAGE = 8;
-    public static final int AI_MAX_DAMAGE = 20;
     public static final int POWER_STRIKE_DAMAGE = 15;
 
     private static final int HUMAN_SEARCH_DAMAGE = 10;
-    private static final int AI_SEARCH_DAMAGE = 14;
 
     private GameRules() {
     }
@@ -44,10 +41,6 @@ public final class GameRules {
         if (actor.healthPercent() <= 35) {
             actions.add(GameAction.defend());
             actions.add(GameAction.retreat());
-        }
-
-        if (!actor.hidden() && canHide(state.board(), actor.position(), opponent.position())) {
-            actions.add(GameAction.hide());
         }
 
         if (distance > 1) {
@@ -96,7 +89,6 @@ public final class GameRules {
             return new ActionOutcome(state, null, "The AI occupies that tile. Use Attack instead.");
         }
 
-        boolean wasHidden = human.hidden();
         human = human.moveTo(destination);
 
         GameState next = new GameState(
@@ -106,13 +98,11 @@ public final class GameRules {
                 Side.AI,
                 state.turnNumber() + 1,
                 state.arenaSeed(),
-                state.humanAttackCharge()
+                state.humanAttackCharge(),
+                state.difficulty()
         );
 
         String message = "Human Ranger moved to tile " + destination.row() + "," + destination.col() + ".";
-        if (wasHidden) {
-            message += " Moving revealed your position.";
-        }
         return new ActionOutcome(next, null, message);
     }
 
@@ -144,9 +134,8 @@ public final class GameRules {
 
         switch (action.type()) {
             case ATTACK -> {
-                int rawDamage = attackDamage(actorSide, searchMode);
+                int rawDamage = attackDamage(actorSide, state.difficulty(), searchMode);
                 int damage = reducedDamage(rawDamage, target);
-                actor = actor.reveal();
                 target = target.receiveDamage(damage);
 
                 if (actorSide == Side.HUMAN) {
@@ -159,7 +148,6 @@ public final class GameRules {
                 }
             }
             case POWER_STRIKE -> {
-                actor = actor.reveal();
                 target = target.receiveDamage(POWER_STRIKE_DAMAGE);
                 humanCharge = 0;
                 description = actor.name() + " used Power Strike for a guaranteed "
@@ -184,16 +172,10 @@ public final class GameRules {
                 }
             }
             case DEFEND -> {
-                actor = actor.withHidden(false).withDefending(true);
+                actor = actor.withDefending(true);
                 description = actor.name() + " raised a defensive guard.";
             }
-            case HIDE -> {
-                actor = actor.withHidden(true);
-                description = actor.name() + " slipped behind cover for protection.";
-            }
-            case HOLD -> description = actor.name() + (actor.hidden()
-                    ? " stayed hidden and held position."
-                    : " held position.");
+            case HOLD -> description = actor.name() + " held position.";
             default -> throw new IllegalStateException("Unexpected action: " + action.type());
         }
 
@@ -207,37 +189,28 @@ public final class GameRules {
                 state.turn().opposite(),
                 state.turnNumber() + 1,
                 state.arenaSeed(),
-                humanCharge
+                humanCharge,
+                state.difficulty()
         );
 
         return new ActionOutcome(next, pathResult, description);
     }
 
-    private static int attackDamage(Side attacker, boolean searchMode) {
-        if (searchMode) {
-            return attacker == Side.HUMAN ? HUMAN_SEARCH_DAMAGE : AI_SEARCH_DAMAGE;
-        }
+    private static int attackDamage(Side attacker, Difficulty difficulty, boolean searchMode) {
+        // Search uses predictable damage so Minimax and Alpha-Beta compare the same moves.
         if (attacker == Side.HUMAN) {
-            return ThreadLocalRandom.current().nextInt(HUMAN_MIN_DAMAGE, HUMAN_MAX_DAMAGE + 1);
+            return searchMode ? HUMAN_SEARCH_DAMAGE
+                    : ThreadLocalRandom.current().nextInt(HUMAN_MIN_DAMAGE, HUMAN_MAX_DAMAGE + 1);
         }
-        return ThreadLocalRandom.current().nextInt(AI_MIN_DAMAGE, AI_MAX_DAMAGE + 1);
+        return searchMode ? difficulty.expectedAiDamage()
+                : ThreadLocalRandom.current().nextInt(difficulty.minAiDamage(), difficulty.maxAiDamage() + 1);
     }
 
     private static int reducedDamage(int rawDamage, UnitState target) {
         if (target.defending()) {
             return Math.max(1, (int) Math.round(rawDamage * 0.50));
         }
-        if (target.hidden()) {
-            return Math.max(1, (int) Math.round(rawDamage * 0.65));
-        }
         return rawDamage;
-    }
-
-    public static boolean canHide(Board board, Position actor, Position opponent) {
-        if (actor.manhattanDistance(opponent) <= 1) {
-            return false;
-        }
-        return hasAdjacentObstacle(board, actor);
     }
 
     public static boolean hasAdjacentObstacle(Board board, Position position) {
