@@ -43,10 +43,6 @@ public final class GameRules {
             actions.add(GameAction.retreat());
         }
 
-        if (!actor.hidden() && canHide(state.board(), actor.position(), opponent.position())) {
-            actions.add(GameAction.hide());
-        }
-
         if (distance > 1) {
             actions.add(GameAction.approach());
         }
@@ -93,7 +89,6 @@ public final class GameRules {
             return new ActionOutcome(state, null, "The AI occupies that tile. Use Attack instead.");
         }
 
-        boolean wasHidden = human.hidden();
         human = human.moveTo(destination);
 
         GameState next = new GameState(
@@ -108,9 +103,6 @@ public final class GameRules {
         );
 
         String message = "Human Ranger moved to tile " + destination.row() + "," + destination.col() + ".";
-        if (wasHidden) {
-            message += " Moving revealed your position.";
-        }
         return new ActionOutcome(next, null, message);
     }
 
@@ -144,7 +136,6 @@ public final class GameRules {
             case ATTACK -> {
                 int rawDamage = attackDamage(actorSide, state.difficulty(), searchMode);
                 int damage = reducedDamage(rawDamage, target);
-                actor = actor.reveal();
                 target = target.receiveDamage(damage);
 
                 if (actorSide == Side.HUMAN) {
@@ -157,7 +148,6 @@ public final class GameRules {
                 }
             }
             case POWER_STRIKE -> {
-                actor = actor.reveal();
                 target = target.receiveDamage(POWER_STRIKE_DAMAGE);
                 humanCharge = 0;
                 description = actor.name() + " used Power Strike for a guaranteed "
@@ -182,16 +172,10 @@ public final class GameRules {
                 }
             }
             case DEFEND -> {
-                actor = actor.withHidden(false).withDefending(true);
+                actor = actor.withDefending(true);
                 description = actor.name() + " raised a defensive guard.";
             }
-            case HIDE -> {
-                actor = actor.withHidden(true);
-                description = actor.name() + " slipped behind cover for protection.";
-            }
-            case HOLD -> description = actor.name() + (actor.hidden()
-                    ? " stayed hidden and held position."
-                    : " held position.");
+            case HOLD -> description = actor.name() + " held position.";
             default -> throw new IllegalStateException("Unexpected action: " + action.type());
         }
 
@@ -226,17 +210,7 @@ public final class GameRules {
         if (target.defending()) {
             return Math.max(1, (int) Math.round(rawDamage * 0.50));
         }
-        if (target.hidden()) {
-            return Math.max(1, (int) Math.round(rawDamage * 0.65));
-        }
         return rawDamage;
-    }
-
-    public static boolean canHide(Board board, Position actor, Position opponent) {
-        if (actor.manhattanDistance(opponent) <= 1) {
-            return false;
-        }
-        return hasAdjacentObstacle(board, actor);
     }
 
     public static boolean hasAdjacentObstacle(Board board, Position position) {

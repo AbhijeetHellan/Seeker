@@ -30,7 +30,8 @@ public final class SelfTest {
         testDifficultyDamageRanges();
         testComparisonData();
         testWasdMovement();
-        testHideBehindCover();
+        testHoldDoesNotReset();
+        testNoHiddenState();
         testApiReset();
         testMinimaxAlphaBetaConsistency();
         System.out.println("All Seeker self-tests passed.");
@@ -71,8 +72,9 @@ public final class SelfTest {
             GameState aiTurn = state(board, human, ai, Side.AI, 0);
             GameState afterAi = GameRules.apply(aiTurn, GameAction.attack()).state();
             int aiDamage = 100 - afterAi.human().health();
-            require(aiDamage >= 8 && aiDamage <= 20,
-                    "AI damage must stay between 8 and 20.");
+            require(aiDamage >= Difficulty.MEDIUM.minAiDamage()
+                    && aiDamage <= Difficulty.MEDIUM.maxAiDamage(),
+                    "AI damage must follow the Medium difficulty damage range.");
         }
     }
 
@@ -169,20 +171,31 @@ public final class SelfTest {
         require(after.turn() == Side.AI, "Manual movement should consume the human turn.");
     }
 
-    private static void testHideBehindCover() {
-        boolean[][] walls = new boolean[6][6];
-        walls[3][1] = true;
-        Board board = new Board(walls);
+    /** Holding consumes a turn but never resets the arena or difficulty. */
+    private static void testHoldDoesNotReset() {
+        GameApi api = new DefaultGameApi(2026L);
+        api.setDifficulty(Difficulty.HARD);
+        GameState before = api.state();
+        api.performHumanAction(ActionType.HOLD);
+        GameState after = api.state();
+        require(after.turnNumber() == before.turnNumber() + 1,
+                "Hold should advance one turn, not reset the match.");
+        require(after.arenaSeed() == before.arenaSeed(),
+                "Hold should not generate another arena.");
+        require(after.difficulty() == Difficulty.HARD,
+                "Hold should preserve the selected difficulty.");
+    }
 
-        UnitState human = unit("H", Side.HUMAN, new Position(3, 2));
-        UnitState ai = unit("A", Side.AI, new Position(0, 5));
-        GameState state = state(board, human, ai, Side.HUMAN, 0);
-
-        require(GameRules.isLegal(state, ActionType.HIDE),
-                "Human beside cover should be able to hide.");
-
-        GameState after = GameRules.apply(state, GameAction.hide()).state();
-        require(after.human().hidden(), "Hide should mark the human as hidden.");
+    private static void testNoHiddenState() {
+        for (ActionType type : ActionType.values()) {
+            require(!type.name().equals("HIDE"), "Hide must not be available as an action.");
+        }
+        GameState state = GameState.newRandomArena(2026L);
+        require(GameRules.legalActions(state).stream().noneMatch(a -> a.label().equalsIgnoreCase("Hide")),
+                "Neither player should have Hide in the legal action list.");
+        require(GameRules.legalActions(state.withTurn(Side.AI)).stream()
+                .noneMatch(a -> a.label().equalsIgnoreCase("Hide")),
+                "The AI must not be offered a Hide action.");
     }
 
     private static void testApiReset() {
@@ -208,7 +221,7 @@ public final class SelfTest {
     }
 
     private static UnitState unit(String name, Side side, Position position) {
-        return new UnitState(name, side, position, 100, 100, false, false);
+        return new UnitState(name, side, position, 100, 100, false);
     }
 
     private static GameState state(

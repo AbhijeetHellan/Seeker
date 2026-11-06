@@ -7,34 +7,32 @@ public record UnitState(
         Position position,
         int health,
         int maxHealth,
-        boolean defending,
-        boolean hidden
+        boolean defending
 ) {
     public UnitState {
-        if (name == null || name.isBlank()) throw new IllegalArgumentException("Unit name is required.");
-        if (side == null || position == null) throw new IllegalArgumentException("Side and position are required.");
-        if (maxHealth <= 0) throw new IllegalArgumentException("maxHealth must be positive.");
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Unit name is required.");
+        }
+        if (side == null || position == null) {
+            throw new IllegalArgumentException("Side and position are required.");
+        }
+        if (maxHealth <= 0) {
+            throw new IllegalArgumentException("maxHealth must be positive.");
+        }
         health = Math.max(0, Math.min(health, maxHealth));
     }
 
     public UnitState moveTo(Position next) {
-        return new UnitState(name, side, next, health, maxHealth, false, false);
+        return new UnitState(name, side, next, health, maxHealth, false);
     }
 
     public UnitState withDefending(boolean value) {
-        return new UnitState(name, side, position, health, maxHealth, value, value ? false : hidden);
-    }
-
-    public UnitState withHidden(boolean value) {
-        return new UnitState(name, side, position, health, maxHealth, value ? false : defending, value);
+        return new UnitState(name, side, position, health, maxHealth, value);
     }
 
     public UnitState receiveDamage(int amount) {
-        return new UnitState(name, side, position, Math.max(0, health - Math.max(0, amount)), maxHealth, defending, hidden);
-    }
-
-    public UnitState reveal() {
-        return hidden ? new UnitState(name, side, position, health, maxHealth, defending, false) : this;
+        return new UnitState(name, side, position,
+                Math.max(0, health - Math.max(0, amount)), maxHealth, defending);
     }
 
     public boolean isAlive() {

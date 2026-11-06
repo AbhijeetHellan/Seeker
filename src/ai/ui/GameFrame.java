@@ -42,7 +42,7 @@ public final class GameFrame extends JFrame {
     private final JLabel minimaxStats = label("Minimax: —", 12, Font.PLAIN, TEXT);
     private final JLabel alphaStats = label("Alpha-Beta: —", 12, Font.PLAIN, TEXT);
     private final JLabel sameMoveLabel = label("Live comparison starts on the AI turn", 11, Font.BOLD, MUTED);
-    private final JLabel depthLabel = label("Search depth: 3", 11, Font.BOLD, TEXT);
+    private final JLabel depthLabel = label("AI Depth: 5", 11, Font.BOLD, TEXT);
     private final JComboBox<Difficulty> difficultyChoice = new JComboBox<>(Difficulty.values());
     private final JLabel difficultyHint = label("Choose before your first turn", 11, Font.PLAIN, MUTED);
     private final JLabel tacticalHint = label(
@@ -63,7 +63,6 @@ public final class GameFrame extends JFrame {
     private final DarkButton attackButton = button("F  Attack", DarkButton.Style.DANGER);
     private final DarkButton powerStrikeButton = button("G  Power Strike (0/5)", DarkButton.Style.PRIMARY);
     private final DarkButton defendButton = button("E  Defend", DarkButton.Style.NORMAL);
-    private final DarkButton hideButton = button("H  Hide", DarkButton.Style.STEALTH);
     private final DarkButton approachButton = button("R  A* Move", DarkButton.Style.PRIMARY);
     private final DarkButton retreatButton = button("X  Retreat", DarkButton.Style.NORMAL);
     private final DarkButton holdButton = button("Space  Hold", DarkButton.Style.NORMAL);
@@ -90,6 +89,8 @@ public final class GameFrame extends JFrame {
         add(buildMain(), BorderLayout.CENTER);
         wireActions();
         installKeyBindings();
+        // Space must only run the Hold action, even after clicking Reset Match.
+        getRootPane().setDefaultButton(null);
         CsvRecorder.reset();
         refreshUi();
         appendLog("New arena generated automatically. Use W/A/S/D to move one tile per turn.");
@@ -171,13 +172,13 @@ public final class GameFrame extends JFrame {
         tactics.add(attackButton);
         tactics.add(powerStrikeButton);
         tactics.add(defendButton);
-        tactics.add(hideButton);
         tactics.add(approachButton);
         tactics.add(retreatButton);
         tactics.add(holdButton);
         JLabel turnHelp = label("5 attacks unlock Power Strike", 11, Font.PLAIN, MUTED);
         turnHelp.setHorizontalAlignment(SwingConstants.CENTER);
         tactics.add(turnHelp);
+        tactics.add(blankCell());
 
         JPanel center = new JPanel(new BorderLayout(12, 0));
         center.setOpaque(false);
@@ -219,60 +220,23 @@ public final class GameFrame extends JFrame {
         difficultyControls.setOpaque(false);
         difficultyChoice.setSelectedItem(state.difficulty());
         difficultyChoice.setPreferredSize(new Dimension(106, 30));
+        difficultyChoice.setBackground(PANEL_2);
+        difficultyChoice.setForeground(TEXT);
         difficultyChoice.setFocusable(false);
-        difficultyChoice.setFont(
-                difficultyChoice.getFont().deriveFont(Font.BOLD, 12f)
-        );
-
-        // Force a dark appearance, including when disabled.
+        difficultyChoice.setFont(difficultyChoice.getFont().deriveFont(Font.BOLD, 12f));
+        difficultyChoice.setBorder(BorderFactory.createLineBorder(new Color(69, 82, 103)));
         difficultyChoice.setUI(new BasicComboBoxUI() {
-
             @Override
             protected JButton createArrowButton() {
-                DarkButton arrow = new DarkButton(
-                        "▾", DarkButton.Style.NORMAL);
+                DarkButton arrow = new DarkButton("▾", DarkButton.Style.NORMAL);
                 arrow.setBorder(new EmptyBorder(2, 5, 2, 5));
                 return arrow;
             }
 
             @Override
-            public void paintCurrentValueBackground(
-                    Graphics g, Rectangle bounds, boolean hasFocus) {
-
-                g.setColor(PANEL_2);
-                g.fillRect(bounds.x, bounds.y,
-                        bounds.width, bounds.height);
-            }
-        });
-
-        difficultyChoice.setOpaque(true);
-        difficultyChoice.setBackground(PANEL_2);
-        difficultyChoice.setForeground(TEXT);
-        difficultyChoice.setBorder(
-                BorderFactory.createLineBorder(new Color(69, 82, 103))
-        );
-
-        difficultyChoice.setRenderer(new DefaultListCellRenderer() {
-
-            @Override
-            public Component getListCellRendererComponent(
-                    JList<?> list, Object value, int index,
-                    boolean selected, boolean focused) {
-
-                JLabel item = (JLabel) super.getListCellRendererComponent(
-                        list, value, index, selected, focused);
-
-                list.setBackground(PANEL_2);
-                item.setOpaque(true);
-                item.setBackground(
-                        index >= 0 && selected
-                                ? new Color(45, 58, 82)
-                                : PANEL_2
-                );
-                item.setForeground(TEXT);
-                item.setBorder(new EmptyBorder(5, 8, 5, 8));
-
-                return item;
+            public void paintCurrentValueBackground(Graphics graphics, Rectangle bounds, boolean hasFocus) {
+                graphics.setColor(PANEL_2);
+                graphics.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             }
         });
         difficultyChoice.setRenderer(new DefaultListCellRenderer() {
@@ -281,6 +245,7 @@ public final class GameFrame extends JFrame {
                                                           int index, boolean selected, boolean focused) {
                 JLabel item = (JLabel) super.getListCellRendererComponent(
                         list, value, index, selected, focused);
+                list.setBackground(PANEL_2);
                 item.setOpaque(true);
                 item.setBackground(selected ? new Color(45, 91, 143) : PANEL_2);
                 item.setForeground(difficultyChoice.isEnabled() ? TEXT : MUTED);
@@ -318,20 +283,19 @@ public final class GameFrame extends JFrame {
         right.add(chartPanel);
         right.add(Box.createVerticalStrut(10));
 
-        JPanel stealthCard = cardPanel(new BorderLayout(8, 6));
-        stealthCard.add(label("COVER / DEFENSE", 11, Font.BOLD, new Color(109, 205, 158)), BorderLayout.NORTH);
-        JTextArea stealthText = new JTextArea(
-                "1. Move beside a rock using W/A/S/D.\n" +
-                "2. Press H to hide in cover and reduce incoming damage.\n" +
-                "3. Hold position to stay hidden.\n" +
-                "4. Moving, attacking, retreating, or defending reveals you.\n" +
-                "Use E to defend when you expect a direct attack.\n" +
-                "Normal human attacks charge Power Strike; the special move is ready after 5 attacks."
+        JPanel defenseCard = cardPanel(new BorderLayout(8, 6));
+        defenseCard.add(label("TACTICAL TIPS", 11, Font.BOLD, new Color(109, 205, 158)), BorderLayout.NORTH);
+        JTextArea defenseText = new JTextArea(
+                "1. Move around rocks with W/A/S/D or use R for A* movement.\n" +
+                "2. Press E to defend and reduce incoming normal-attack damage.\n" +
+                "3. Press Space to hold position and let the AI take its turn.\n" +
+                "4. F attacks when the opponent is adjacent.\n" +
+                "5. After five normal attacks, G uses a 15-damage Power Strike."
         );
-        styleReadOnlyText(stealthText);
-        stealthCard.add(stealthText, BorderLayout.CENTER);
-        stealthCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
-        right.add(stealthCard);
+        styleReadOnlyText(defenseText);
+        defenseCard.add(defenseText, BorderLayout.CENTER);
+        defenseCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
+        right.add(defenseCard);
         right.add(Box.createVerticalStrut(10));
 
         JPanel logCard = cardPanel(new BorderLayout(8, 8));
@@ -362,7 +326,6 @@ public final class GameFrame extends JFrame {
         attackButton.addActionListener(e -> performHumanAction(ActionType.ATTACK));
         powerStrikeButton.addActionListener(e -> performHumanAction(ActionType.POWER_STRIKE));
         defendButton.addActionListener(e -> performHumanAction(ActionType.DEFEND));
-        hideButton.addActionListener(e -> performHumanAction(ActionType.HIDE));
         approachButton.addActionListener(e -> performHumanAction(ActionType.APPROACH));
         retreatButton.addActionListener(e -> performHumanAction(ActionType.RETREAT));
         holdButton.addActionListener(e -> performHumanAction(ActionType.HOLD));
@@ -398,7 +361,6 @@ public final class GameFrame extends JFrame {
         bind(root, KeyStroke.getKeyStroke(KeyEvent.VK_G, 0), "powerStrike",
                 () -> performHumanAction(ActionType.POWER_STRIKE));
         bind(root, KeyStroke.getKeyStroke(KeyEvent.VK_E, 0), "defend", () -> performHumanAction(ActionType.DEFEND));
-        bind(root, KeyStroke.getKeyStroke(KeyEvent.VK_H, 0), "hide", () -> performHumanAction(ActionType.HIDE));
         bind(root, KeyStroke.getKeyStroke(KeyEvent.VK_R, 0), "approach", () -> performHumanAction(ActionType.APPROACH));
         bind(root, KeyStroke.getKeyStroke(KeyEvent.VK_X, 0), "retreat", () -> performHumanAction(ActionType.RETREAT));
         bind(root, KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "hold", () -> performHumanAction(ActionType.HOLD));
@@ -561,7 +523,6 @@ public final class GameFrame extends JFrame {
         powerStrikeButton.setText(state.powerStrikeReady()
                 ? "G  Power Strike READY (15)"
                 : "G  Power Strike (" + state.humanAttackCharge() + "/5)");
-        hideButton.setEnabled(humanTurn && game.isLegal(ActionType.HIDE));
         approachButton.setEnabled(humanTurn && game.isLegal(ActionType.APPROACH));
         retreatButton.setEnabled(humanTurn && game.isLegal(ActionType.RETREAT));
         defendButton.setEnabled(humanTurn && game.isLegal(ActionType.DEFEND));
@@ -571,9 +532,7 @@ public final class GameFrame extends JFrame {
         if (difficultyChoice.getSelectedItem() != state.difficulty()) {
             difficultyChoice.setSelectedItem(state.difficulty());
         }
-        depthLabel.setText(
-                "AI Depth: " + state.difficulty().searchDepth()
-        );
+        depthLabel.setText("AI Depth: " + state.difficulty().searchDepth());
         difficultyHint.setText(beforeFirstMove
                 ? "Choose difficulty before your first move. Locks once the game starts."
                 : "Difficulty locked for this match; reset/new arena to change it.");
@@ -632,7 +591,6 @@ public final class GameFrame extends JFrame {
         approachButton.setEnabled(enabled);
         retreatButton.setEnabled(enabled);
         defendButton.setEnabled(enabled);
-        hideButton.setEnabled(enabled);
         holdButton.setEnabled(enabled);
     }
 

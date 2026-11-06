@@ -83,7 +83,6 @@ public final class DefaultGameApi implements GameApi {
             case APPROACH -> GameAction.approach();
             case RETREAT -> GameAction.retreat();
             case DEFEND -> GameAction.defend();
-            case HIDE -> GameAction.hide();
             case HOLD -> GameAction.hold();
         };
     }

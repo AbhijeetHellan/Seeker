@@ -5,7 +5,7 @@ public enum Difficulty {
     EASY("Easy", 4, 4, 9),
     MEDIUM("Medium", 5, 6, 12),
     HARD("Hard", 6, 8, 16);
-	
+
     private final String label;
     private final int searchDepth;
     private final int minAiDamage;

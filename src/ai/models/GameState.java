@@ -41,8 +41,8 @@ public record GameState(
         Position aiStart = new Position(1, cols - 2);
         Board board = Board.randomReachable(rows, cols, 0.20, humanStart, aiStart, seed);
 
-        UnitState human = new UnitState("Human Ranger", Side.HUMAN, humanStart, 100, 100, false, false);
-        UnitState ai = new UnitState("AI Sentinel", Side.AI, aiStart, 100, 100, false, false);
+        UnitState human = new UnitState("Human Ranger", Side.HUMAN, humanStart, 100, 100, false);
+        UnitState ai = new UnitState("AI Sentinel", Side.AI, aiStart, 100, 100, false);
         return new GameState(board, human, ai, Side.HUMAN, 1, seed, 0, difficulty);
     }
 

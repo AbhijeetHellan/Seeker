@@ -6,13 +6,16 @@ import java.awt.*;
 
 /** Button that paints its own dark surface so Windows look-and-feel cannot turn it white. */
 final class DarkButton extends JButton {
-    enum Style { NORMAL, PRIMARY, DANGER, STEALTH }
+    enum Style { NORMAL, PRIMARY, DANGER }
 
     private final Style style;
 
     DarkButton(String text, Style style) {
         super(text);
         this.style = style;
+        // Keep buttons from capturing Space; the game maps Space to Hold.
+        setFocusable(false);
+        setRequestFocusEnabled(false);
         setForeground(new Color(232, 236, 244));
         setFont(getFont().deriveFont(Font.BOLD, 12f));
         setFocusPainted(false);
@@ -36,13 +39,11 @@ final class DarkButton extends JButton {
             fill = switch (style) {
                 case PRIMARY -> new Color(40, 101, 183);
                 case DANGER -> new Color(142, 54, 63);
-                case STEALTH -> new Color(55, 92, 79);
                 case NORMAL -> new Color(37, 45, 59);
             };
             border = switch (style) {
                 case PRIMARY -> new Color(77, 143, 232);
                 case DANGER -> new Color(201, 81, 92);
-                case STEALTH -> new Color(81, 145, 119);
                 case NORMAL -> new Color(71, 83, 103);
             };
             if (isSelected()) {

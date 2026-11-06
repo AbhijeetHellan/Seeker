@@ -45,13 +45,7 @@ public final class Evaluator {
             score -= 32;
         }
 
-        // Cover and defense matter, especially at lower health.
-        if (ai.hidden()) {
-            score += 11;
-        }
-        if (human.hidden()) {
-            score -= 14;
-        }
+        // Positions near obstacles can offer tactical routes; defending reduces damage.
         if (GameRules.hasAdjacentObstacle(state.board(), ai.position())) {
             score += 6;
         }
