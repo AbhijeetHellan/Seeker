@@ -32,6 +32,9 @@ public final class SelfTest {
         testWasdMovement();
         testHoldDoesNotReset();
         testNoHiddenState();
+        testAggressiveBossChasesWhenHealthyOrWounded();
+        testBossStaysToFightAtCloseRange();
+        testBossFollowsAStarAroundObstacles();
         testApiReset();
         testMinimaxAlphaBetaConsistency();
         System.out.println("All Seeker self-tests passed.");
@@ -196,6 +199,78 @@ public final class SelfTest {
         require(GameRules.legalActions(state.withTurn(Side.AI)).stream()
                 .noneMatch(a -> a.label().equalsIgnoreCase("Hide")),
                 "The AI must not be offered a Hide action.");
+    }
+
+    private static void testAggressiveBossChasesWhenHealthyOrWounded() {
+        Board board = Board.empty(8, 8);
+        UnitState human = unit("Human", Side.HUMAN, new Position(4, 4));
+        for (int hp : new int[] {100, 20, 1}) {
+            UnitState boss = new UnitState("Boss", Side.AI,
+                    new Position(0, 0), hp, 100, false);
+            GameState starting = state(board, human, boss, Side.AI, 5);
+
+            require(GameRules.legalActions(starting).size() == 1,
+                    "Out-of-range boss should chase instead of waiting or retreating.");
+            require(GameRules.isLegal(starting, ActionType.APPROACH),
+                    "Boss must be able to approach.");
+            require(!GameRules.isLegal(starting, ActionType.RETREAT),
+                    "Boss must never flee, even at very low health.");
+            require(!GameRules.isLegal(starting, ActionType.HOLD),
+                    "Boss must not idle while the human is out of range.");
+
+            DecisionResult decision = new AlphaBeta().chooseAction(starting, 4);
+            require(decision.action().type() == ActionType.APPROACH,
+                    "Alpha-Beta boss should pursue when the human is not adjacent.");
+            GameState moved = GameRules.applyForSearch(starting, decision.action()).state();
+            require(moved.ai().position().manhattanDistance(human.position()) == 7,
+                    "Boss should take one tile toward the human on an empty board.");
+        }
+    }
+
+    private static void testBossStaysToFightAtCloseRange() {
+        Board board = Board.empty(6, 6);
+        UnitState human = unit("Human", Side.HUMAN, new Position(2, 2));
+        UnitState boss = unit("Boss", Side.AI, new Position(2, 3));
+        GameState starting = state(board, human, boss, Side.AI, 0);
+
+        require(GameRules.isLegal(starting, ActionType.ATTACK),
+                "Boss must be able to attack when adjacent.");
+        require(GameRules.isLegal(starting, ActionType.DEFEND),
+                "Boss should retain an option to guard in close combat.");
+        require(!GameRules.isLegal(starting, ActionType.RETREAT),
+                "Boss should not retreat while in melee range.");
+        DecisionResult mm = new Minimax().chooseAction(starting, 4);
+        DecisionResult ab = new AlphaBeta().chooseAction(starting, 4);
+        require(mm.action().type() == ab.action().type(),
+                "Both algorithms must agree on boss combat decisions.");
+    }
+
+    private static void testBossFollowsAStarAroundObstacles() {
+        // The wall forces a detour. Manhattan distance may temporarily grow,
+        // but the boss must follow the valid A* path instead of giving up.
+        boolean[][] walls = new boolean[7][7];
+        walls[2][3] = true;
+        walls[3][3] = true;
+        walls[4][3] = true;
+        Board board = new Board(walls);
+        UnitState human = unit("Human", Side.HUMAN, new Position(3, 4));
+        UnitState boss = unit("Boss", Side.AI, new Position(3, 2));
+        GameState current = state(board, human, boss, Side.AI, 0);
+
+        int moved = 0;
+        while (current.ai().position().manhattanDistance(human.position()) > 1 && moved < 20) {
+            require(GameRules.legalActions(current).get(0).type() == ActionType.APPROACH,
+                    "Boss should keep chasing around an obstacle wall.");
+            GameState next = GameRules.applyForSearch(current, GameAction.approach()).state();
+            require(!next.ai().position().equals(current.ai().position()),
+                    "Boss should actually move through the detour.");
+            require(board.isWalkable(next.ai().position()),
+                    "A* chase must avoid walls.");
+            current = next.withTurn(Side.AI);
+            moved++;
+        }
+        require(current.ai().position().manhattanDistance(human.position()) == 1,
+                "Boss should reach melee range through the maze.");
     }
 
     private static void testApiReset() {

@@ -19,7 +19,12 @@ public final class GameRules {
     private GameRules() {
     }
 
-    /** Returns legal actions in an order that also helps Alpha-Beta pruning. */
+    /**
+     * A boss that hunts the human: the AI moves toward the player until it is
+     * close enough to attack. It never retreats or waits at a distance.
+     * The human keeps the full set of defensive and movement actions.
+     * Both Minimax and Alpha-Beta use this exact same action list.
+     */
     public static List<GameAction> legalActions(GameState state) {
         if (state.isTerminal()) {
             return List.of();
@@ -28,25 +33,36 @@ public final class GameRules {
         UnitState actor = state.unit(state.turn());
         UnitState opponent = state.unit(state.turn().opposite());
         int distance = actor.position().manhattanDistance(opponent.position());
-
         List<GameAction> actions = new ArrayList<>();
 
+        if (actor.side() == Side.AI) {
+            if (distance > 1) {
+                // Chasing is mandatory while the boss is out of attack range.
+                // A* will navigate around rocks, even if a detour is needed.
+                actions.add(GameAction.approach());
+            } else {
+                // In melee range the boss chooses between attacking or guarding.
+                actions.add(GameAction.attack());
+                actions.add(GameAction.defend());
+                actions.add(GameAction.hold());
+            }
+            return actions;
+        }
+
+        // Human actions: dodge, defend, counterattack and use Power Strike.
         if (distance == 1) {
-            if (actor.side() == Side.HUMAN && state.powerStrikeReady()) {
+            if (state.powerStrikeReady()) {
                 actions.add(GameAction.powerStrike());
             }
             actions.add(GameAction.attack());
         }
-
         if (actor.healthPercent() <= 35) {
             actions.add(GameAction.defend());
             actions.add(GameAction.retreat());
         }
-
         if (distance > 1) {
             actions.add(GameAction.approach());
         }
-
         addIfMissing(actions, GameAction.retreat());
         addIfMissing(actions, GameAction.defend());
         actions.add(GameAction.hold());

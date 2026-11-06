@@ -19,7 +19,9 @@ This project is being developed as a three-person AI course project. The goal is
 - CSV export/logging for algorithm comparison and later analysis
 - Gradle, Checkstyle, and GitHub Actions for code-quality checks
 
-**Note:** Ambush, Hide, and the Euclidean heuristic are **not** part of Seeker.
+**Note:** Ambush, Hide, and the Euclidean heuristic are **not** part of Seeker. Rocks still obstruct movement, but there is no Hide action.
+
+**Boss behavior:** The AI advances toward the human with A* whenever it is out of attack range. When adjacent, it evaluates attacking, defending, or holding using the same Minimax/Alpha-Beta search. Unlike earlier versions, it never selects Retreat, including at low health. Human players can still Retreat and use rocks to break up the chase.
 
 ## Difficulty and damage
 

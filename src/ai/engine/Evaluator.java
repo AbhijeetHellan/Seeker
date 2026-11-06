@@ -1,8 +1,6 @@
 package ai.engine;
 
-import ai.models.GameRules;
 import ai.models.GameState;
-import ai.models.Side;
 import ai.models.UnitState;
 
 /** Scores a position from the AI's point of view. */
@@ -24,47 +22,37 @@ public final class Evaluator {
 
         double score = 0;
 
-        // Health difference is the main goal.
+        // Winning the fight matters most: damage dealt and health preserved.
         score += (ai.health() - human.health()) * 5.5;
 
-        // Healthy AI pressures the player. Low-health AI values distance more.
-        if (ai.healthPercent() > 40) {
-            score -= distance * 1.8;
-        } else {
-            score += distance * 1.6;
-        }
+        // This boss ALWAYS wants to close the gap, even when badly hurt.
+        // Previously low health rewarded increasing the distance (fleeing).
+        score -= distance * 5.0;
 
-        // Being next to the human is valuable when the AI can attack.
+        // Once close, stay engaged rather than backing away from an attack.
         if (distance == 1) {
-            score += state.turn() == Side.AI ? 34 : -24;
+            score += 18.0;
         }
 
-        // The human's charged Power Strike is a real threat at close range.
-        score -= state.humanAttackCharge() * 2.5;
+        // A charged Power Strike matters, but must not make the boss flee.
+        score -= state.humanAttackCharge() * 2.0;
         if (state.powerStrikeReady() && distance == 1) {
-            score -= 32;
+            score -= 12.0;
         }
 
-        // Positions near obstacles can offer tactical routes; defending reduces damage.
-        if (GameRules.hasAdjacentObstacle(state.board(), ai.position())) {
-            score += 6;
+        // Guarding is useful only in melee range. Defending far away should
+        // never compete with pursuing the player.
+        if (ai.defending() && distance == 1) {
+            score += ai.healthPercent() <= 30 ? 12.0 : 4.0;
         }
-        if (GameRules.hasAdjacentObstacle(state.board(), human.position())) {
-            score -= 5;
-        }
-        if (ai.defending()) {
-            score += ai.healthPercent() <= 40 ? 18 : 8;
-        }
-        if (human.defending()) {
-            score -= human.healthPercent() <= 40 ? 16 : 7;
+        if (human.defending() && distance == 1) {
+            score -= 4.0;
         }
 
-        // More open neighboring tiles means more tactical flexibility.
-        score += state.board().neighbors(ai.position()).size() * 2.0;
-        score -= state.board().neighbors(human.position()).size() * 1.4;
-
-        // Small tempo bonus so the AI prefers useful actions on its own turn.
-        score += state.turn() == Side.AI ? 1.0 : -1.0;
+        // Slight bonus for having space to maneuver near the player.
+        if (distance <= 2) {
+            score += state.board().neighbors(ai.position()).size();
+        }
         return score;
     }
 }
