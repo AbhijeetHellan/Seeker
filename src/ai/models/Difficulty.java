@@ -2,10 +2,10 @@ package ai.models;
 
 /** Game difficulty: how far the AI looks ahead and how much damage it can deal. */
 public enum Difficulty {
-    EASY("Easy", 2, 5, 12),
-    MEDIUM("Medium", 3, 8, 20),
-    HARD("Hard", 4, 12, 24);
-
+    EASY("Easy", 4, 4, 9),
+    MEDIUM("Medium", 5, 6, 12),
+    HARD("Hard", 6, 8, 16);
+	
     private final String label;
     private final int searchDepth;
     private final int minAiDamage;

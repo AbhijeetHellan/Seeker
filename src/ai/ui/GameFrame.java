@@ -219,17 +219,60 @@ public final class GameFrame extends JFrame {
         difficultyControls.setOpaque(false);
         difficultyChoice.setSelectedItem(state.difficulty());
         difficultyChoice.setPreferredSize(new Dimension(106, 30));
-        difficultyChoice.setBackground(PANEL_2);
-        difficultyChoice.setForeground(TEXT);
         difficultyChoice.setFocusable(false);
-        difficultyChoice.setFont(difficultyChoice.getFont().deriveFont(Font.BOLD, 12f));
-        difficultyChoice.setBorder(BorderFactory.createLineBorder(new Color(69, 82, 103)));
+        difficultyChoice.setFont(
+                difficultyChoice.getFont().deriveFont(Font.BOLD, 12f)
+        );
+
+        // Force a dark appearance, including when disabled.
         difficultyChoice.setUI(new BasicComboBoxUI() {
+
             @Override
             protected JButton createArrowButton() {
-                DarkButton arrow = new DarkButton("▾", DarkButton.Style.NORMAL);
+                DarkButton arrow = new DarkButton(
+                        "▾", DarkButton.Style.NORMAL);
                 arrow.setBorder(new EmptyBorder(2, 5, 2, 5));
                 return arrow;
+            }
+
+            @Override
+            public void paintCurrentValueBackground(
+                    Graphics g, Rectangle bounds, boolean hasFocus) {
+
+                g.setColor(PANEL_2);
+                g.fillRect(bounds.x, bounds.y,
+                        bounds.width, bounds.height);
+            }
+        });
+
+        difficultyChoice.setOpaque(true);
+        difficultyChoice.setBackground(PANEL_2);
+        difficultyChoice.setForeground(TEXT);
+        difficultyChoice.setBorder(
+                BorderFactory.createLineBorder(new Color(69, 82, 103))
+        );
+
+        difficultyChoice.setRenderer(new DefaultListCellRenderer() {
+
+            @Override
+            public Component getListCellRendererComponent(
+                    JList<?> list, Object value, int index,
+                    boolean selected, boolean focused) {
+
+                JLabel item = (JLabel) super.getListCellRendererComponent(
+                        list, value, index, selected, focused);
+
+                list.setBackground(PANEL_2);
+                item.setOpaque(true);
+                item.setBackground(
+                        index >= 0 && selected
+                                ? new Color(45, 58, 82)
+                                : PANEL_2
+                );
+                item.setForeground(TEXT);
+                item.setBorder(new EmptyBorder(5, 8, 5, 8));
+
+                return item;
             }
         });
         difficultyChoice.setRenderer(new DefaultListCellRenderer() {
@@ -528,7 +571,9 @@ public final class GameFrame extends JFrame {
         if (difficultyChoice.getSelectedItem() != state.difficulty()) {
             difficultyChoice.setSelectedItem(state.difficulty());
         }
-        depthLabel.setText("Depth " + state.difficulty().searchDepth());
+        depthLabel.setText(
+                "AI Depth: " + state.difficulty().searchDepth()
+        );
         difficultyHint.setText(beforeFirstMove
                 ? "Choose difficulty before your first move. Locks once the game starts."
                 : "Difficulty locked for this match; reset/new arena to change it.");
