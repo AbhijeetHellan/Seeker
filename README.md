@@ -179,24 +179,7 @@ gradle clean check selfTest
 
 GitHub Actions runs the **Build and Checkstyle** verification job for pushes and pull requests targeting `main`. The project includes a `.github/CODEOWNERS` file for reviews; branch protection and approval requirements must be enabled in the GitHub repository's settings.
 
-## Team workflow
-
-The GitHub repository may retain the name **AI-Fight-Me**, while the game and Gradle project are named **Seeker**.
-
-1. Create a feature branch from the latest `main`.
-2. Make and test your changes locally.
-3. Push your branch and open a pull request into `main`.
-4. Make sure Gradle/Checkstyle checks pass.
-5. Request the project owner's review before merging, according to the repository ruleset.
-
-Do not commit generated `.gradle/`, `build/`, `bin/`, or IDE metadata files.
 
 ## Graduate-level evaluation
 
 The final analysis will compare Minimax and Alpha-Beta at identical depths and game states, measure search-node savings and execution times, test different arenas and difficulties, and discuss limitations such as search complexity and heuristic evaluation quality.
-
-## Keyboard focus and Hold
-
-- **Space** performs **Hold**, not Reset Match. Game buttons do not capture keyboard focus, so Space still works after clicking them.
-- Reset Match and New Random Arena remain on-screen controls.
-- **Hide has been removed** for both the human and the AI. Rocks still block movement, and Defend reduces incoming normal-attack damage.
