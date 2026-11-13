@@ -21,10 +21,6 @@ public record GameAction(ActionType type, String label) {
         return new GameAction(ActionType.DEFEND, "Defend");
     }
 
-    public static GameAction hide() {
-        return new GameAction(ActionType.HIDE, "Hide");
-    }
-
     public static GameAction hold() {
         return new GameAction(ActionType.HOLD, "Hold");
     }

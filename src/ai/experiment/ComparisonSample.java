@@ -1,11 +1,13 @@
 package ai.experiment;
 
 import ai.engine.DecisionResult;
+import ai.models.Difficulty;
 
 /** One live Minimax-vs-Alpha-Beta measurement from the same game state. */
 public record ComparisonSample(
         int aiTurn,
         int gameTurn,
+        Difficulty difficulty,
         DecisionResult minimax,
         DecisionResult alphaBeta
 ) {

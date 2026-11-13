@@ -10,7 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Graphical arena view with custom-drawn human, robot, obstacles, cover, and A* path. */
+/** Graphical arena view with custom-drawn human, robot, obstacles, and A* path. */
 public final class BoardPanel extends JPanel {
     private GameState state;
     private List<Position> path = List.of();
@@ -76,8 +76,6 @@ public final class BoardPanel extends JPanel {
             }
         }
 
-        drawCoverHalo(g2, state.human(), x0, y0, cell);
-        drawCoverHalo(g2, state.ai(), x0, y0, cell);
         drawUnit(g2, state.human(), x0, y0, cell, state.turn() == Side.HUMAN);
         drawUnit(g2, state.ai(), x0, y0, cell, state.turn() == Side.AI);
         g2.dispose();
@@ -104,17 +102,6 @@ public final class BoardPanel extends JPanel {
         g2.drawLine(x + pad + 6, y + pad + 7, x + cell - pad - 8, y + cell - pad - 9);
     }
 
-    private void drawCoverHalo(Graphics2D g2, UnitState unit, int x0, int y0, int cell) {
-        if (!unit.hidden()) return;
-        int x = x0 + unit.position().col() * cell;
-        int y = y0 + unit.position().row() * cell;
-        g2.setColor(new Color(72, 207, 139, 42));
-        g2.fillRoundRect(x + 2, y + 2, cell - 4, cell - 4, 14, 14);
-        g2.setStroke(new BasicStroke(Math.max(2f, cell / 20f)));
-        g2.setColor(new Color(99, 230, 164, 185));
-        g2.drawRoundRect(x + 5, y + 5, cell - 10, cell - 10, 12, 12);
-    }
-
     private void drawUnit(Graphics2D g2, UnitState unit, int x0, int y0, int cell, boolean active) {
         int x = x0 + unit.position().col() * cell;
         int y = y0 + unit.position().row() * cell;
@@ -126,28 +113,13 @@ public final class BoardPanel extends JPanel {
             g2.drawOval(x + 3, y + 3, cell - 6, cell - 6);
         }
 
-        Composite oldComposite = g2.getComposite();
-        if (unit.hidden()) g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.55f));
         if (unit.side() == Side.HUMAN) drawHuman(g2, x, y, cell, margin);
         else drawRobot(g2, x, y, cell, margin);
-        g2.setComposite(oldComposite);
 
         if (unit.defending()) {
             g2.setStroke(new BasicStroke(3f));
             g2.setColor(new Color(112, 214, 255, 220));
             g2.drawArc(x + margin / 2, y + margin / 2, cell - margin, cell - margin, 210, 240);
-        }
-        if (unit.hidden()) {
-            g2.setFont(getFont().deriveFont(Font.BOLD, Math.max(8f, cell / 7f)));
-            String tag = "HIDDEN";
-            int tw = g2.getFontMetrics().stringWidth(tag);
-            int th = g2.getFontMetrics().getHeight();
-            int tx = x + (cell - tw) / 2;
-            int ty = y + Math.max(th, cell / 5);
-            g2.setColor(new Color(10, 22, 20, 205));
-            g2.fillRoundRect(tx - 5, ty - th + 3, tw + 10, th, 8, 8);
-            g2.setColor(new Color(112, 232, 174));
-            g2.drawString(tag, tx, ty - 2);
         }
     }
 

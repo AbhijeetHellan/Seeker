@@ -62,3 +62,14 @@ jar {
         attributes 'Main-Class': 'ai.App'
     }
 }
+
+// Swing focus regression: Space must never activate Reset Match.
+tasks.register('buttonFocusTest', JavaExec) {
+    group = 'verification'
+    description = 'Checks that game buttons do not steal the Space shortcut.'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'ai.ui.ButtonFocusTest'
+}
+
+selfTest.dependsOn buttonFocusTest

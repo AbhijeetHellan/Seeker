@@ -6,3 +6,4 @@ find src test -name '*.java' -print > sources.txt
 javac -encoding UTF-8 -d out @sources.txt
 rm sources.txt
 java -cp out ai.SelfTest
+java -Djava.awt.headless=true -cp out ai.ui.ButtonFocusTest

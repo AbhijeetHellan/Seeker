@@ -8,6 +8,9 @@ javac -encoding UTF-8 -d out @sources.txt
 if errorlevel 1 goto :error
 del sources.txt
 java -cp out ai.SelfTest
+if errorlevel 1 goto :error
+java -Djava.awt.headless=true -cp out ai.ui.ButtonFocusTest
+if errorlevel 1 goto :error
 pause
 exit /b 0
 :error
